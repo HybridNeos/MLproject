@@ -34,14 +34,10 @@ def splitData(X, y):
     return digits
 
 
-def imageTest(digits, number, ncol, nrow):
+def imageTest(digits, offset=0, number, ncol, nrow):
     # error checking
-    if ncol * nrow > len(digits[number]):
-        raise Exception(
-            "Data has {} images but {} were asked for".format(
-                len(digits[number]), ncol * nrow
-            )
-        )
+    if ncol * nrow > 50:
+        raise Exception("Too many images asked for")
 
     images = digits[number]
 
@@ -57,7 +53,7 @@ def imageTest(digits, number, ncol, nrow):
         for i in range(ncol):
             for j in range(nrow):
                 unrolled = (i * nrow) + j
-                digit = images[unrolled].reshape(16, 16)
+                digit = images[unrolled+offset].reshape(16, 16)
                 ax[i, j].imshow(digit, cmap="gray")
                 ax[i, j].set_yticklabels([])
                 ax[i, j].set_xticklabels([])
