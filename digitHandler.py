@@ -34,7 +34,7 @@ def splitData(X, y):
     return digits
 
 
-def imageTest(digits, offset=0, number, ncol, nrow):
+def imageTest(digits, number, ncol, nrow, offset=0):
     # error checking
     if ncol * nrow > 50:
         raise Exception("Too many images asked for")
@@ -47,6 +47,13 @@ def imageTest(digits, offset=0, number, ncol, nrow):
         plt.imshow(digit, cmap="gray")
         plt.gca().axes.get_yaxis().set_visible(False)
         plt.gca().axes.get_xaxis().set_visible(False)
+    elif ncol == 1 or nrow == 1:
+        fig, ax = plt.subplots(ncol, nrow)
+        for i in range(nrow if ncol == 1 else ncol):
+            digit = images[i+offset].reshape(16, 16)
+            ax[i].imshow(digit, cmap="gray")
+            ax[i].set_yticklabels([])
+            ax[i].set_xticklabels([])
     else:
         fig, ax = plt.subplots(ncol, nrow)
         #fig.tight_layout()
@@ -62,13 +69,15 @@ def imageTest(digits, offset=0, number, ncol, nrow):
     pipe = BytesIO()
     plt.savefig(pipe, format="png")
 
-    # Read the saved figure into Image
-    pipe.seek(0)
-    img = Image.open(pipe)
-    img.show()
-    pipe.close()
 
-    return None
+    # Read the saved figure into Image
+    #pipe.seek(0)
+    return pipe
+
+    #img = Image.open(pipe)
+    #img.show()
+    #pipe.close()
+    #return img
 
 
 if __name__ == "__main__":
