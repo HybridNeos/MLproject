@@ -2,8 +2,8 @@ from PIL import Image
 import numpy as np
 from io import BytesIO
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 import matplotlib
-
 matplotlib.use("agg")
 
 
@@ -34,7 +34,7 @@ def splitData(X, y):
     return digits
 
 
-def imageTest(digits, number, ncol, nrow, offset=0):
+def getPictures(digits, number, ncol, nrow, offset=0):
     # error checking
     if ncol * nrow > 50:
         raise Exception("Too many images asked for")
@@ -44,15 +44,18 @@ def imageTest(digits, number, ncol, nrow, offset=0):
     # Make the plot
     if ncol == 1 and nrow == 1:
         digit = images[0].reshape(16, 16)
-        plt.imshow(digit, cmap="gray")
-        plt.gca().axes.get_yaxis().set_visible(False)
-        plt.gca().axes.get_xaxis().set_visible(False)
+        fig, ax = plt.subplots(1)
+        ax.imshow(digit, cmap="gray")
+        ax.set_yticklabels([])
+        ax.tick_params(bottom='off', left='off')
+        ax.set_xticklabels([])
     elif ncol == 1 or nrow == 1:
         fig, ax = plt.subplots(ncol, nrow)
         for i in range(nrow if ncol == 1 else ncol):
             digit = images[i+offset].reshape(16, 16)
             ax[i].imshow(digit, cmap="gray")
             ax[i].set_yticklabels([])
+            ax[i].tick_params(bottom='off', left='off')
             ax[i].set_xticklabels([])
     else:
         fig, ax = plt.subplots(ncol, nrow)
@@ -63,25 +66,32 @@ def imageTest(digits, number, ncol, nrow, offset=0):
                 digit = images[unrolled+offset].reshape(16, 16)
                 ax[i, j].imshow(digit, cmap="gray")
                 ax[i, j].set_yticklabels([])
+                ax[i, j].tick_params(bottom='off', left='off')
                 ax[i, j].set_xticklabels([])
 
-    # Save the plot
-    pipe = BytesIO()
-    plt.savefig(pipe, format="png")
+    return fig
 
+def doPCA(X):
+    pca = PCA(n_components=X.shape[1])
+    pca.fit(X)
+    return pca
 
-    # Read the saved figure into Image
-    #pipe.seek(0)
-    return pipe
-
-    #img = Image.open(pipe)
-    #img.show()
-    #pipe.close()
-    #return img
+def projectData( X):
+    return
 
 
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test = readData()
-    train_digits = splitData(X_train, y_train)
-    test_digits = splitData(X_test, y_test)
-    imageTest(train_digits, 0, 4, 4)
+    #train_digits = splitData(X_train, y_train)
+    #test_digits = splitData(X_test, y_test)
+    #imageTest(train_digits, 0, 4, 4)
+
+    threes = splitData(X_train, y_train)[3]
+
+    pca = PCA(n_components=256)
+    pca.fit(threes)
+    pca.explained_variance_ratio_[:1]
+
+    #print(np.cumsum(pca.explained_variance_ratio_))
+    bases = pca.components_
+    (threes @ bases[:5].T).shape
