@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from math import floor
 import dataHandler as dh
+import classifiers as cf
 
 # Cached function from dataHandler
 @st.cache
@@ -26,11 +27,15 @@ def splitData(trainOrTest="train"):
 def doPCA(X):
     return dh.doPCA(X)
 
+@st.cache
+def projectOnto(data, numComponents):
+    pca = doPCA(data)
+    return (data @ pca.components_[:numComponents].T)
 
 # Sidebar config
 st.sidebar.header("ML project")
 st.sidebar.markdown("By Mark Shapiro")
-mode = st.sidebar.selectbox("Options", ["Home", "Preprocessing", "Model Selection"])
+mode = st.sidebar.selectbox("Options", ["Home", "Preprocessing", "Model Preview", "Solving"])
 
 # Homepage
 if mode == "Home":
@@ -111,17 +116,36 @@ elif mode == "Preprocessing":
             closestNumber = diff.index(min(diff)) + 1
             st.write(str(closestNumber), "components needed for closest match")
 
-# Solving with models
-else:
-    st.title("Model Selection")
+# Preview images of models
+elif mode == "Model Preview":
     method = st.sidebar.selectbox(
-        "Models all from scipy",
+        "Choose a model to preview its hypothesis boundary",
         ["--", "KNN", "SVM", "Linear", "NeuralNetwork", "Bayesian"]
     )
 
     if method == "--":
         st.write("Select a model")
-
     else:
-        st.title(method)
-        st.write("More to come")
+        # Get 2 pcas so we can plot the data
+        X_train, _, y_train, _ = getData()
+        reduced = projectOnto(X_train, 2)
+
+        if method=="KNN":
+            st.title("K Nearest Neighbors")
+            # add a select box for which digits wanted
+
+            K = st.number_input("Pick K", 0, len(reduced))
+
+            if K > 0:
+                clf = cf.KNN(reduced, y_train, K)
+                img = cf.plotBoundaries(reduced, y_train, clf)
+                st.write(img)
+                st.write("Ein of {}".format(1-clf.score(reduced, y_train)))
+
+        else:
+            st.title(method)
+            st.write("More to come")
+
+# Actual Solving
+else:
+    st.title("Actual solving will go here")

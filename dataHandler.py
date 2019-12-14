@@ -6,25 +6,23 @@ from sklearn.decomposition import PCA
 import matplotlib
 matplotlib.use("agg")
 
-
+# Get the bases data
 def readData():
     train_data = np.loadtxt("./Data/ZipDigits.train", dtype=float)
     test_data = np.loadtxt("./Data/ZipDigits.test", dtype=float)
 
-    # normalize = lambda x: -x
     normalize = lambda x: (1 - (x + 1) / 2)
-    # normalize = lambda x: x
 
-    y_train = train_data[:, 0].reshape(-1, 1).astype(int)
+    y_train = train_data[:, 0].reshape(-1,).astype(int)
     X_train = normalize(train_data[:, 1:])
 
-    y_test = test_data[:, 0].reshape(-1, 1).astype(int)
+    y_test = test_data[:, 0].reshape(-1,).astype(int)
     X_test = normalize(test_data[:, 1:])
 
     return X_train, X_test, y_train, y_test
 
-
-def splitData(X, y):
+# Split the data by digit
+def splitData(X, y, numbers=None):
     digits = [None for _ in range(10)]
 
     for i in range(10):
@@ -33,6 +31,11 @@ def splitData(X, y):
 
     return digits
 
+# Get a subset of the digits
+def selectDigits(X, y, numbers):
+    #for i in numbers:
+        #stuff
+    return None
 
 def getPictures(digits, number, ncol, nrow, offset=0):
     # error checking
@@ -75,10 +78,6 @@ def doPCA(X):
     pca = PCA(n_components=X.shape[1])
     pca.fit(X)
     return pca
-
-def projectData( X):
-    return
-
 
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test = readData()
