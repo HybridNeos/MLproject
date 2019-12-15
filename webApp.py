@@ -4,6 +4,7 @@ import pandas as pd
 from math import floor
 import dataHandler as dh
 import classifiers as cf
+from random import sample
 
 # Cached function from dataHandler
 @st.cache
@@ -22,32 +23,61 @@ def splitData(trainOrTest="train"):
     else:
         raise Exception("Can only ask for train or test")
 
+
 @st.cache
-def subsetAll(n=30):
+def sizeAndDigitSubset(numbers, n=10):
     # Get data prepare output holder
     digits = splitData()
-    X = np.empty((10*n, digits[0].shape[1]))
-    y = np.empty((10*n,), dtype=int)
+    X = np.empty((len(numbers) * n, digits[0].shape[1]))
+    y = np.empty((len(numbers) * n,), dtype=int)
 
     # recombine
-    for i in range(10):
-        X[i*n:(i+1)*n] = digits[i][:n]
-        y[i*n:(i+1)*n] = i
+    for i, number in enumerate(numbers):
+        X[i * n : (i + 1) * n] = sample(list(digits[number]), n)
+        y[i * n : (i + 1) * n] = number
+
     return X, y
+
 
 @st.cache
 def doPCA(X):
     return dh.doPCA(X)
 
+
 @st.cache
 def projectOnto(data, numComponents):
     pca = doPCA(getData()[0])
-    return (data @ pca.components_[:numComponents].T)
+    return data @ pca.components_[:numComponents].T
+
+
+@st.cache
+def getColorsAndMarkers(numbers):
+    markers = ["s", "^", "o", "X", "v", "<", ">", "P", "h", "D"]
+    colors = [
+        "r",
+        "b",
+        "limegreen",
+        "lightgray",
+        "cyan",
+        "m",
+        "y",
+        "darkorange",
+        "chocolate",
+        "tab:purple",
+    ]
+    m = [markers[num] for num in numbers]
+    c = [colors[num] for num in numbers]
+    return "".join(m), ",".join(c)
+
+
+################################################################################
 
 # Sidebar config
 st.sidebar.header("ML project")
 st.sidebar.markdown("By Mark Shapiro")
-mode = st.sidebar.selectbox("Options", ["Home", "Preprocessing", "Model Preview", "Solving"])
+mode = st.sidebar.selectbox(
+    "Options", ["Home", "Preprocessing", "Model Preview", "Solving"]
+)
 
 # Homepage
 if mode == "Home":
@@ -85,10 +115,7 @@ elif mode == "Preprocessing":
 
         # Pick a number and see how good the approximation is
         numComponents = st.number_input(
-            "Pick a number of components 1-256",
-            min_value=0,
-            max_value=256,
-            value=0,
+            "Pick a number of components 1-256", min_value=0, max_value=256, value=0
         )
         if numComponents > 0:
             # Get the data
@@ -98,13 +125,23 @@ elif mode == "Preprocessing":
 
             # Plot 1
             st.subheader("Individual Explained Variances")
-            st.line_chart(variances.rename("{0:.3f}%-{1:.3f}%".format(max(variances)*100, min(variances)*100)))
+            st.line_chart(
+                variances.rename(
+                    "{0:.3f}%-{1:.3f}%".format(
+                        max(variances) * 100, min(variances) * 100
+                    )
+                )
+            )
 
             # Plot 2
             cumulativeVariance = np.cumsum(variances)
             st.subheader("Sum of variances")
             st.line_chart(
-                cumulativeVariance.rename("Explains {0:.3f}%".format(cumulativeVariance[len(cumulativeVariance) - 1] * 100))
+                cumulativeVariance.rename(
+                    "Explains {0:.3f}%".format(
+                        cumulativeVariance[len(cumulativeVariance) - 1] * 100
+                    )
+                )
             )
 
         # Pick a percentage and look for appropriate number of components
@@ -115,8 +152,9 @@ elif mode == "Preprocessing":
                 "Pick a desired variance percent",
                 min_value=0.00,
                 max_value=100.00,
-                value=0.00
-            )/100
+                value=0.00,
+            )
+            / 100
         )
         if desiredPercent > 0.00:
             # Get the data
@@ -124,7 +162,10 @@ elif mode == "Preprocessing":
             pca = doPCA(data)
 
             # Calculate and show closest match
-            diff = [abs(desiredPercent-x) for x in np.cumsum(pca.explained_variance_ratio_)]
+            diff = [
+                abs(desiredPercent - x)
+                for x in np.cumsum(pca.explained_variance_ratio_)
+            ]
             closestNumber = diff.index(min(diff)) + 1
             st.write(str(closestNumber), "components needed for closest match")
 
@@ -132,28 +173,43 @@ elif mode == "Preprocessing":
 elif mode == "Model Preview":
     method = st.sidebar.selectbox(
         "Choose a model to preview its hypothesis boundary",
-        ["--", "KNN", "SVM", "Linear", "NeuralNetwork", "Bayesian"]
+        ["--", "KNN", "SVM", "Linear", "NeuralNetwork", "Bayesian"],
     )
 
     if method == "--":
-        st.write("Select a model")
+        st.header("Select a model")
+        st.write("Data drawn is randomly sampled each time but cached")
+        st.write("The mlxtend plot_decision_regions functions is used")
+        st.write("--It is buggy")
+
     else:
-        if method=="KNN":
+        # How many data points per digit we have
+        n = 10
+
+        # Get a portion of the data
+        if method == "KNN":
             st.title("K Nearest Neighbors")
 
             # Paramaters and data shrinking
-            n = st.number_input("Pick number of points per digit", 1, 30, 10)
-            subset_X, subset_y = subsetAll(n)
+            numbers = st.multiselect("Pick digits to show", np.arange(10))
+            # numbers = [int(num) for num in range(10)]
+            maxK = max(1, n * len(numbers))
+            K = st.number_input("Pick K from 1 to " + str(maxK), 1, maxK)
+
+            subset_X, subset_y = sizeAndDigitSubset(numbers, n)
             reduced = projectOnto(subset_X, 2)
-            K = st.number_input("Pick K", 1, len(reduced), 1)
 
             # Plot the decision boundaries
             st.write("")
             if st.button("Plot it"):
-                clf = cf.KNN(reduced, subset_y, K)
-                img = cf.plotBoundaries(reduced, subset_y, clf)
-                st.write(img)
-                st.subheader("Classifcation error of {}".format(1-clf.score(reduced, subset_y)))
+                with st.spinner("Constructing classifer"):
+                    clf = cf.KNN(reduced, subset_y, K)
+                    Ein = 1 - clf.score(reduced, subset_y)
+                with st.spinner("Drawing boundaries"):
+                    m, c = getColorsAndMarkers(numbers)
+                    img = cf.plotBoundaries(reduced, subset_y, clf, markers=m, colors=c)
+                    st.write(img)
+                st.subheader("Classifcation error of " + str(Ein))
 
         else:
             st.title(method)

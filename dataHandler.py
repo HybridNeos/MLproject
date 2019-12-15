@@ -84,13 +84,3 @@ if __name__ == "__main__":
     #train_digits = splitData(X_train, y_train)
     #test_digits = splitData(X_test, y_test)
     #imageTest(train_digits, 0, 4, 4)
-
-    threes = splitData(X_train, y_train)[3]
-
-    pca = PCA(n_components=256)
-    pca.fit(threes)
-    pca.explained_variance_ratio_[:1]
-
-    #print(np.cumsum(pca.explained_variance_ratio_))
-    bases = pca.components_
-    (threes @ bases[:5].T).shape
