@@ -22,6 +22,18 @@ def splitData(trainOrTest="train"):
     else:
         raise Exception("Can only ask for train or test")
 
+@st.cache
+def subsetAll(n=30):
+    # Get data prepare output holder
+    digits = splitData()
+    X = np.empty((10*n, digits[0].shape[1]))
+    y = np.empty((10*n,), dtype=int)
+
+    # recombine
+    for i in range(10):
+        X[i*n:(i+1)*n] = digits[i][:n]
+        y[i*n:(i+1)*n] = i
+    return X, y
 
 @st.cache
 def doPCA(X):
@@ -29,7 +41,7 @@ def doPCA(X):
 
 @st.cache
 def projectOnto(data, numComponents):
-    pca = doPCA(data)
+    pca = doPCA(getData()[0])
     return (data @ pca.components_[:numComponents].T)
 
 # Sidebar config
@@ -126,21 +138,22 @@ elif mode == "Model Preview":
     if method == "--":
         st.write("Select a model")
     else:
-        # Get 2 pcas so we can plot the data
-        X_train, _, y_train, _ = getData()
-        reduced = projectOnto(X_train, 2)
-
         if method=="KNN":
             st.title("K Nearest Neighbors")
-            # add a select box for which digits wanted
 
-            K = st.number_input("Pick K", 0, len(reduced))
+            # Paramaters and data shrinking
+            n = st.number_input("Pick number of points per digit", 1, 30, 10)
+            subset_X, subset_y = subsetAll(n)
+            reduced = projectOnto(subset_X, 2)
+            K = st.number_input("Pick K", 1, len(reduced), 1)
 
-            if K > 0:
-                clf = cf.KNN(reduced, y_train, K)
-                img = cf.plotBoundaries(reduced, y_train, clf)
+            # Plot the decision boundaries
+            st.write("")
+            if st.button("Plot it"):
+                clf = cf.KNN(reduced, subset_y, K)
+                img = cf.plotBoundaries(reduced, subset_y, clf)
                 st.write(img)
-                st.write("Ein of {}".format(1-clf.score(reduced, y_train)))
+                st.subheader("Classifcation error of {}".format(1-clf.score(reduced, subset_y)))
 
         else:
             st.title(method)
