@@ -6,7 +6,6 @@ import dataHandler as dh
 import classifiers as cf
 from random import sample
 
-# Cached function from dataHandler
 @st.cache
 def getData():
     return dh.readData()
@@ -25,6 +24,11 @@ def splitData(trainOrTest="train"):
 
 
 @st.cache
+def doPCA(X):
+    return dh.doPCA(X)
+
+
+#@st.cache
 def sizeAndDigitSubset(numbers, n=10):
     # Get data prepare output holder
     digits = splitData()
@@ -38,19 +42,13 @@ def sizeAndDigitSubset(numbers, n=10):
 
     return X, y
 
-
-@st.cache
-def doPCA(X):
-    return dh.doPCA(X)
-
-
-@st.cache
+#@st.cache
 def projectOnto(data, numComponents):
     pca = doPCA(getData()[0])
     return data @ pca.components_[:numComponents].T
 
 
-@st.cache
+#@st.cache
 def getColorsAndMarkers(numbers):
     markers = ["s", "^", "o", "X", "v", "<", ">", "P", "h", "D"]
     colors = [
@@ -68,8 +66,6 @@ def getColorsAndMarkers(numbers):
     m = [markers[num] for num in numbers]
     c = [colors[num] for num in numbers]
     return "".join(m), ",".join(c)
-
-
 ################################################################################
 
 # Sidebar config
@@ -153,8 +149,7 @@ elif mode == "Preprocessing":
                 min_value=0.00,
                 max_value=100.00,
                 value=0.00,
-            )
-            / 100
+            ) / 100
         )
         if desiredPercent > 0.00:
             # Get the data
@@ -173,7 +168,7 @@ elif mode == "Preprocessing":
 elif mode == "Model Preview":
     method = st.sidebar.selectbox(
         "Choose a model to preview its hypothesis boundary",
-        ["--", "KNN", "SVM", "Linear", "NeuralNetwork", "Bayesian"],
+        ["--", "KNN", "SVM", "NeuralNetwork", "Regression", "Bayesian", "Random Forest"],
     )
 
     if method == "--":
@@ -192,7 +187,6 @@ elif mode == "Model Preview":
 
             # Paramaters and data shrinking
             numbers = st.multiselect("Pick digits to show", np.arange(10))
-            # numbers = [int(num) for num in range(10)]
             maxK = max(1, n * len(numbers))
             K = st.number_input("Pick K from 1 to " + str(maxK), 1, maxK)
 
@@ -206,14 +200,52 @@ elif mode == "Model Preview":
                     clf = cf.KNN(reduced, subset_y, K)
                     Ein = 1 - clf.score(reduced, subset_y)
                 with st.spinner("Drawing boundaries"):
-                    m, c = getColorsAndMarkers(numbers)
-                    img = cf.plotBoundaries(reduced, subset_y, clf, markers=m, colors=c)
+                    #m, c = getColorsAndMarkers(numbers)
+                    img = cf.plotBoundaries(reduced, subset_y, clf)
                     st.write(img)
-                st.subheader("Classifcation error of " + str(Ein))
+                st.subheader("Classifcation error of {0:.3f}".format(Ein))
+
+        elif method == "SVM":
+            st.title("Support Vector Machine")
+
+            # Select which digits to view
+            st.subheader("Pick digits to show")
+            numbers = st.multiselect("0-9 available", range(10))
+            st.write(numbers)
+            subset_X, subset_y = sizeAndDigitSubset(numbers, n)
+            reduced = projectOnto(subset_X, 2)
+
+            # Get the Paramaters
+            st.write("")
+            st.subheader("Parameters")
+            params = {}
+
+            params["C"] = st.number_input("Regularization paramater C", min_value=0.01, value=1.0)
+            params["kernel"] = st.selectbox("Kernel", ["rbf", "linear", "poly", "sigmoid"])
+            if params["kernel"] == "poly":
+                params["degree"] = st.number_input("Polynomial order", 1, value=3)
+            if params["kernel"] != "linear":
+                gamma = st.text_input("Kernel coefficient. Enter 'scale', 'auto', or a float", "scale")
+                params["gamma"] = float(gamma) if gamma.replace(".", "").isnumeric() else gamma
+
+            # Plot the decision boundaries
+            st.subheader("\nDecision boundary")
+            if st.button("Plot it"):
+                with st.spinner("Constructing classifer"):
+                    clf = cf.SVM(reduced, subset_y, params)
+                    Ein = 1 - clf.score(reduced, subset_y)
+                with st.spinner("Drawing boundaries"):
+                    #m, c = getColorsAndMarkers(numbers)
+                    img = cf.plotBoundaries(reduced, subset_y, clf)
+                    st.write(img)
+                st.subheader("Classifcation error of {0:.3f}".format(Ein))
+
+        elif method == "NeuralNetwork":
+            st.title("This is next")
 
         else:
-            st.title(method)
-            st.write("More to come")
+            st.title("I don't know how "+method+" works")
+            st.write("Coming soon")
 
 # Actual Solving
 else:
