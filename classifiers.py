@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 from mlxtend.plotting import plot_decision_regions
 from sklearn.svm import SVC
 
-def KNN(X, y, n):
-    neigh = KNeighborsClassifier(n)
+def KNN(X, y, params):
+    neigh = KNeighborsClassifier(params["K"])
     neigh.fit(X, y)
     return neigh
 

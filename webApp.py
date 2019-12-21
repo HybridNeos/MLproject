@@ -66,6 +66,42 @@ def getColorsAndMarkers(numbers):
     m = [markers[num] for num in numbers]
     c = [colors[num] for num in numbers]
     return "".join(m), ",".join(c)
+
+pointsPerDigit = 10
+
+def pickNumbers(model):
+    st.title(model)
+    st.subheader("Pick digits to show")
+    return st.multiselect("0-9 available", range(10), key=model)
+
+def paramStart():
+    st.write("")
+    st.subheader("Parameters")
+    return {}
+
+def plotBoundaries(numbers, model, params):
+    st.subheader("\nDecision boundary")
+
+    # Get the data
+    subset_X, subset_y = sizeAndDigitSubset(numbers, pointsPerDigit)
+    reduced = projectOnto(subset_X, 2)
+
+    # function mapping
+    models = {"KNN": cf.KNN, "SVM": cf.SVM}
+
+    # Complete the plot
+    if st.button("Plot it"):
+        with st.spinner("Constructing classifer"):
+            clf = models[model](reduced, subset_y, params)
+            Ein = 1 - clf.score(reduced, subset_y)
+
+        with st.spinner("Drawing boundaries"):
+            #m, c = getColorsAndMarkers(numbers)
+            img = cf.plotBoundaries(reduced, subset_y, clf)
+            st.write(img)
+
+        st.subheader("Classifcation error of {0:.3f}".format(Ein))
+
 ################################################################################
 
 # Sidebar config
@@ -166,12 +202,12 @@ elif mode == "Preprocessing":
 
 # Preview images of models
 elif mode == "Model Preview":
-    method = st.sidebar.selectbox(
+    model = st.sidebar.selectbox(
         "Choose a model to preview its hypothesis boundary",
         ["--", "KNN", "SVM", "NeuralNetwork", "Regression", "Bayesian", "Random Forest"],
     )
 
-    if method == "--":
+    if model == "--":
         st.header("Select a model")
         st.write("Data drawn is randomly sampled each time but cached")
         st.write("The mlxtend plot_decision_regions functions is used")
@@ -182,44 +218,24 @@ elif mode == "Model Preview":
         n = 10
 
         # Get a portion of the data
-        if method == "KNN":
-            st.title("K Nearest Neighbors")
-
-            # Paramaters and data shrinking
-            numbers = st.multiselect("Pick digits to show", np.arange(10))
+        if model == "KNN":
+            # Numbers
+            numbers = pickNumbers(model)
             maxK = max(1, n * len(numbers))
-            K = st.number_input("Pick K from 1 to " + str(maxK), 1, maxK)
 
-            subset_X, subset_y = sizeAndDigitSubset(numbers, n)
-            reduced = projectOnto(subset_X, 2)
+            #Parameters
+            params = paramStart()
+            params["K"] = st.number_input("Pick K from 1 to " + str(maxK), 1, maxK)
 
-            # Plot the decision boundaries
-            st.write("")
-            if st.button("Plot it"):
-                with st.spinner("Constructing classifer"):
-                    clf = cf.KNN(reduced, subset_y, K)
-                    Ein = 1 - clf.score(reduced, subset_y)
-                with st.spinner("Drawing boundaries"):
-                    #m, c = getColorsAndMarkers(numbers)
-                    img = cf.plotBoundaries(reduced, subset_y, clf)
-                    st.write(img)
-                st.subheader("Classifcation error of {0:.3f}".format(Ein))
+            # Plot
+            plotBoundaries(numbers, model, params)
 
-        elif method == "SVM":
-            st.title("Support Vector Machine")
+        elif model == "SVM":
+            # Numbers
+            numbers = pickNumbers(model)
 
-            # Select which digits to view
-            st.subheader("Pick digits to show")
-            numbers = st.multiselect("0-9 available", range(10))
-            st.write(numbers)
-            subset_X, subset_y = sizeAndDigitSubset(numbers, n)
-            reduced = projectOnto(subset_X, 2)
-
-            # Get the Paramaters
-            st.write("")
-            st.subheader("Parameters")
-            params = {}
-
+            # Parameters
+            params = paramStart()
             params["C"] = st.number_input("Regularization paramater C", min_value=0.01, value=1.0)
             params["kernel"] = st.selectbox("Kernel", ["rbf", "linear", "poly", "sigmoid"])
             if params["kernel"] == "poly":
@@ -228,23 +244,14 @@ elif mode == "Model Preview":
                 gamma = st.text_input("Kernel coefficient. Enter 'scale', 'auto', or a float", "scale")
                 params["gamma"] = float(gamma) if gamma.replace(".", "").isnumeric() else gamma
 
-            # Plot the decision boundaries
-            st.subheader("\nDecision boundary")
-            if st.button("Plot it"):
-                with st.spinner("Constructing classifer"):
-                    clf = cf.SVM(reduced, subset_y, params)
-                    Ein = 1 - clf.score(reduced, subset_y)
-                with st.spinner("Drawing boundaries"):
-                    #m, c = getColorsAndMarkers(numbers)
-                    img = cf.plotBoundaries(reduced, subset_y, clf)
-                    st.write(img)
-                st.subheader("Classifcation error of {0:.3f}".format(Ein))
+            # Plot
+            plotBoundaries(numbers, model, params)
 
-        elif method == "NeuralNetwork":
+        elif model == "NeuralNetwork":
             st.title("This is next")
 
         else:
-            st.title("I don't know how "+method+" works")
+            st.title("I don't know how "+model+" works")
             st.write("Coming soon")
 
 # Actual Solving
