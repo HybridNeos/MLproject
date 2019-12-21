@@ -6,6 +6,7 @@ import dataHandler as dh
 import classifiers as cf
 from random import sample
 
+
 @st.cache
 def getData():
     return dh.readData()
@@ -28,7 +29,7 @@ def doPCA(X):
     return dh.doPCA(X)
 
 
-#@st.cache
+# @st.cache
 def sizeAndDigitSubset(numbers, n=10):
     # Get data prepare output holder
     digits = splitData()
@@ -42,13 +43,14 @@ def sizeAndDigitSubset(numbers, n=10):
 
     return X, y
 
-#@st.cache
+
+# @st.cache
 def projectOnto(data, numComponents):
     pca = doPCA(getData()[0])
     return data @ pca.components_[:numComponents].T
 
 
-#@st.cache
+# @st.cache
 def getColorsAndMarkers(numbers):
     markers = ["s", "^", "o", "X", "v", "<", ">", "P", "h", "D"]
     colors = [
@@ -67,17 +69,21 @@ def getColorsAndMarkers(numbers):
     c = [colors[num] for num in numbers]
     return "".join(m), ",".join(c)
 
+
 pointsPerDigit = 10
+
 
 def pickNumbers(model):
     st.title(model)
     st.subheader("Pick digits to show")
     return st.multiselect("0-9 available", range(10), key=model)
 
+
 def paramStart():
     st.write("")
     st.subheader("Parameters")
     return {}
+
 
 def plotBoundaries(numbers, model, params):
     st.subheader("\nDecision boundary")
@@ -96,11 +102,12 @@ def plotBoundaries(numbers, model, params):
             Ein = 1 - clf.score(reduced, subset_y)
 
         with st.spinner("Drawing boundaries"):
-            #m, c = getColorsAndMarkers(numbers)
+            # m, c = getColorsAndMarkers(numbers)
             img = cf.plotBoundaries(reduced, subset_y, clf)
             st.write(img)
 
         st.subheader("Classifcation error of {0:.3f}".format(Ein))
+
 
 ################################################################################
 
@@ -185,7 +192,8 @@ elif mode == "Preprocessing":
                 min_value=0.00,
                 max_value=100.00,
                 value=0.00,
-            ) / 100
+            )
+            / 100
         )
         if desiredPercent > 0.00:
             # Get the data
@@ -193,18 +201,28 @@ elif mode == "Preprocessing":
             pca = doPCA(data)
 
             # Calculate and show closest match
-            diff = [
-                abs(desiredPercent - x)
-                for x in np.cumsum(pca.explained_variance_ratio_)
-            ]
+            totals = np.cumsum(pca.explained_variance_ratio_)
+            diff = [abs(desiredPercent - x) for x in totals]
             closestNumber = diff.index(min(diff)) + 1
-            st.write(str(closestNumber), "components needed for closest match")
+            st.write(
+                "{0} gives closest match at {1:.3f}% variance".format(
+                    str(closestNumber), 100*totals[closestNumber - 1]
+                )
+            )
 
 # Preview images of models
 elif mode == "Model Preview":
     model = st.sidebar.selectbox(
         "Choose a model to preview its hypothesis boundary",
-        ["--", "KNN", "SVM", "NeuralNetwork", "Regression", "Bayesian", "Random Forest"],
+        [
+            "--",
+            "KNN",
+            "SVM",
+            "NeuralNetwork",
+            "Regression",
+            "Bayesian",
+            "Random Forest",
+        ],
     )
 
     if model == "--":
@@ -214,16 +232,14 @@ elif mode == "Model Preview":
         st.write("--It is buggy")
 
     else:
-        # How many data points per digit we have
-        n = 10
 
         # Get a portion of the data
         if model == "KNN":
             # Numbers
             numbers = pickNumbers(model)
-            maxK = max(1, n * len(numbers))
+            maxK = max(1, pointsPerDigit * len(numbers))
 
-            #Parameters
+            # Parameters
             params = paramStart()
             params["K"] = st.number_input("Pick K from 1 to " + str(maxK), 1, maxK)
 
@@ -236,13 +252,21 @@ elif mode == "Model Preview":
 
             # Parameters
             params = paramStart()
-            params["C"] = st.number_input("Regularization paramater C", min_value=0.01, value=1.0)
-            params["kernel"] = st.selectbox("Kernel", ["rbf", "linear", "poly", "sigmoid"])
+            params["C"] = st.number_input(
+                "Regularization paramater C", min_value=0.01, value=1.0
+            )
+            params["kernel"] = st.selectbox(
+                "Kernel", ["rbf", "linear", "poly", "sigmoid"]
+            )
             if params["kernel"] == "poly":
                 params["degree"] = st.number_input("Polynomial order", 1, value=3)
             if params["kernel"] != "linear":
-                gamma = st.text_input("Kernel coefficient. Enter 'scale', 'auto', or a float", "scale")
-                params["gamma"] = float(gamma) if gamma.replace(".", "").isnumeric() else gamma
+                gamma = st.text_input(
+                    "Kernel coefficient. Enter 'scale', 'auto', or a float", "scale"
+                )
+                params["gamma"] = (
+                    float(gamma) if gamma.replace(".", "").isnumeric() else gamma
+                )
 
             # Plot
             plotBoundaries(numbers, model, params)
@@ -251,7 +275,7 @@ elif mode == "Model Preview":
             st.title("This is next")
 
         else:
-            st.title("I don't know how "+model+" works")
+            st.title("I don't know how " + model + " works")
             st.write("Coming soon")
 
 # Actual Solving
