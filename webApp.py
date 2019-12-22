@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from math import floor
 import dataHandler as dh
-import classifiers as cf
+import classifierFactory as cf
 from random import sample
 
 
@@ -74,18 +74,18 @@ pointsPerDigit = 10
 
 
 def pickNumbers(model):
-    st.subheader("Pick digits to show")
+    st.header("Pick digits to show")
     return st.multiselect("0-9 available", range(10), key=model)
 
 
 def paramStart():
     st.write("")
-    st.subheader("Parameters")
+    st.header("Parameters")
     return {}
 
 
 def plotBoundaries(numbers, model, params):
-    st.subheader("\nDecision boundary")
+    st.header("\nDecision boundary")
 
     # Get the data
     subset_X, subset_y = sizeAndDigitSubset(numbers, pointsPerDigit)
@@ -278,11 +278,12 @@ elif mode == "Model Preview":
             # Parameters
             params = paramStart()
             numLayers = st.number_input("Number of hidden layers", 1, 5)
-            params["numUnits"] = ["None" for _ in range(numLayers)]
-            params["activation"] = [0 for _ in range(numLayers)]
+            params["numUnits"] = ["None" for _ in range(numLayers+1)]
+            params["activation"] = [0 for _ in range(numLayers+1)]
 
+            # Hidden Layers
+            st.subheader("Hidden Layers")
             for i in range(numLayers):
-                st.write("")
                 st.write("Layer "+str(i+1))
                 params["numUnits"][i] = st.number_input("Number of units", 1, 64, 16, key=i)
                 params["activation"][i] = st.selectbox(
@@ -292,7 +293,18 @@ elif mode == "Model Preview":
                     6 if i < numLayers-1 else 10,
                     key=i
                 )
+                if i < numLayers-1:
+                    st.write("")
 
+            st.subheader("Output layer")
+            params["numUnits"][-1] = 1 if len(numbers) == 2 else len(numbers)
+            params["activation"][-1] = st.selectbox(
+                "Output layer activation function",
+                ["elu", "softmax", "selu", "softplus", "softsign", "relu",
+                "tanh", "sigmoid", "hard_sigmoid", "exponential", "linear"],
+                6 if i < numLayers-1 else 10,
+                key=i
+            )
 
         else:
             st.title("I don't know how " + model + " works")
