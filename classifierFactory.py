@@ -1,7 +1,17 @@
+import warnings
+warnings.simplefilter(action="ignore", category=FutureWarning)
+
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
 import matplotlib.pyplot as plt
 from mlxtend.plotting import plot_decision_regions
-from sklearn.svm import SVC
+
+import tensorflow as tf
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.utils import to_categorical
+
+# TURN THIS INTO A FACTORY CLASS
 
 def KNN(X, y, params):
     neigh = KNeighborsClassifier(params["K"])
@@ -21,6 +31,9 @@ def SVM(X, y, params):
 
     svm.fit(X, y)
     return svm
+
+def NeuralNetwork(X, y, params):
+    cat_y = to_categorical(y)
 
 def plotBoundaries(X, y, clf, markers=None, colors=None):
     fig, ax = plt.subplots(1)

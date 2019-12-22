@@ -74,7 +74,6 @@ pointsPerDigit = 10
 
 
 def pickNumbers(model):
-    st.title(model)
     st.subheader("Pick digits to show")
     return st.multiselect("0-9 available", range(10), key=model)
 
@@ -232,6 +231,7 @@ elif mode == "Model Preview":
         st.write("--It is buggy")
 
     else:
+        st.title(model)
 
         # Get a portion of the data
         if model == "KNN":
@@ -272,7 +272,27 @@ elif mode == "Model Preview":
             plotBoundaries(numbers, model, params)
 
         elif model == "NeuralNetwork":
-            st.title("This is next")
+            # Numbers
+            numbers = pickNumbers(model)
+
+            # Parameters
+            params = paramStart()
+            numLayers = st.number_input("Number of hidden layers", 1, 5)
+            params["numUnits"] = ["None" for _ in range(numLayers)]
+            params["activation"] = [0 for _ in range(numLayers)]
+
+            for i in range(numLayers):
+                st.write("")
+                st.write("Layer "+str(i+1))
+                params["numUnits"][i] = st.number_input("Number of units", 1, 64, 16, key=i)
+                params["activation"][i] = st.selectbox(
+                    "Activation function",
+                    ["elu", "softmax", "selu", "softplus", "softsign", "relu",
+                    "tanh", "sigmoid", "hard_sigmoid", "exponential", "linear"],
+                    6 if i < numLayers-1 else 10,
+                    key=i
+                )
+
 
         else:
             st.title("I don't know how " + model + " works")
