@@ -1,10 +1,12 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
+
+from random import sample
 from math import floor
+
 import dataHandler as dh
 import classifierFactory as cf
-from random import sample
 
 
 @st.cache
@@ -70,9 +72,6 @@ def getColorsAndMarkers(numbers):
     return "".join(m), ",".join(c)
 
 
-pointsPerDigit = 10
-
-
 def pickNumbers(model):
     st.header("Pick digits to show")
     return st.multiselect("0-9 available", range(10), key=model)
@@ -80,8 +79,11 @@ def pickNumbers(model):
 
 def paramStart():
     st.write("")
-    st.header("Parameters")
+    st.header("Model Parameters")
     return {}
+
+
+pointsPerDigit = 10
 
 
 def plotBoundaries(numbers, model, params):
@@ -92,7 +94,7 @@ def plotBoundaries(numbers, model, params):
     reduced = projectOnto(subset_X, 2)
 
     # function mapping
-    models = {"KNN": cf.KNN, "SVM": cf.SVM}
+    models = {"KNN": cf.KNN, "SVM": cf.SVM, "NeuralNetwork": cf.NeuralNetwork}
 
     # Complete the plot
     if st.button("Plot it"):
@@ -205,7 +207,7 @@ elif mode == "Preprocessing":
             closestNumber = diff.index(min(diff)) + 1
             st.write(
                 "{0} gives closest match at {1:.3f}% variance".format(
-                    str(closestNumber), 100*totals[closestNumber - 1]
+                    str(closestNumber), 100 * totals[closestNumber - 1]
                 )
             )
 
@@ -272,39 +274,86 @@ elif mode == "Model Preview":
             plotBoundaries(numbers, model, params)
 
         elif model == "NeuralNetwork":
+            if st.checkbox("Concealed technical details"):
+                st.write(
+                    "Implemented with Keras using Tensorflow as backend\n\n"
+                    + "All layers use a bias with no regularization (to avoid input clutter)\n\n"
+                    + "Optimizer is default sgd and Ein reported is 1-accuracy metric"
+                )
+
             # Numbers
             numbers = pickNumbers(model)
 
             # Parameters
             params = paramStart()
             numLayers = st.number_input("Number of hidden layers", 1, 5)
-            params["numUnits"] = ["None" for _ in range(numLayers+1)]
-            params["activation"] = [0 for _ in range(numLayers+1)]
+            params["numUnits"] = [0 for _ in range(numLayers + 1)]
+            params["activation"] = ["None" for _ in range(numLayers + 1)]
 
             # Hidden Layers
-            st.subheader("Hidden Layers")
+            st.subheader("Hidden Layer" if numLayers == 1 else "Hidden Layers")
             for i in range(numLayers):
-                st.write("Layer "+str(i+1))
-                params["numUnits"][i] = st.number_input("Number of units", 1, 64, 16, key=i)
+                st.write("Layer " + str(i + 1))
+                params["numUnits"][i] = st.number_input(
+                    "Number of units (1-64)", 1, 64, 32 // 2 ** (i + 1), key=i
+                )
                 params["activation"][i] = st.selectbox(
                     "Activation function",
-                    ["elu", "softmax", "selu", "softplus", "softsign", "relu",
-                    "tanh", "sigmoid", "hard_sigmoid", "exponential", "linear"],
-                    6 if i < numLayers-1 else 10,
-                    key=i
+                    [
+                        "elu",
+                        "softmax",
+                        "selu",
+                        "softplus",
+                        "softsign",
+                        "relu",
+                        "tanh",
+                        "sigmoid",
+                        "hard_sigmoid",
+                        "exponential",
+                        "linear",
+                    ],
+                    6 if i < numLayers - 1 else 10,
+                    key=i,
                 )
-                if i < numLayers-1:
+                if i < numLayers - 1:
                     st.write("")
 
+            # Output Layer - 1 for binary or n for n class
             st.subheader("Output layer")
             params["numUnits"][-1] = 1 if len(numbers) == 2 else len(numbers)
             params["activation"][-1] = st.selectbox(
                 "Output layer activation function",
-                ["elu", "softmax", "selu", "softplus", "softsign", "relu",
-                "tanh", "sigmoid", "hard_sigmoid", "exponential", "linear"],
-                6 if i < numLayers-1 else 10,
-                key=i
+                [
+                    "elu",
+                    "softmax",
+                    "selu",
+                    "softplus",
+                    "softsign",
+                    "relu",
+                    "tanh",
+                    "sigmoid",
+                    "hard_sigmoid",
+                    "exponential",
+                    "linear",
+                ],
+                6 if i < numLayers - 1 else 10,
+                key=i,
             )
+
+            # Training details
+            st.header("Training details")
+            params["epochs"] = st.number_input(
+                "Number of training iterations", 1, 10000, 1000
+            )
+            maxBatch = max(1, len(sizeAndDigitSubset(numbers, pointsPerDigit)[0]))
+            params["BatchSize"] = st.number_input(
+                "Batch size 1 - %d" % maxBatch, 1, maxBatch, maxBatch
+            )
+
+            # st.write(params)
+
+            # Plot
+            # plotBoundaries(numbers, model, params)
 
         else:
             st.title("I don't know how " + model + " works")
