@@ -4,10 +4,11 @@ import pandas as pd
 
 from random import sample
 from math import floor
+from keras.utils import to_categorical
 
 import dataHandler as dh
-import classifierFactory as cf
-
+from classifierFactory import ClassifierFactory as cf
+#cf = ClassifierFactory
 
 @st.cache
 def getData():
@@ -83,11 +84,11 @@ def paramStart():
     return {}
 
 
-pointsPerDigit = 10
+pointsPerDigit = 100
 
 
 def plotBoundaries(numbers, model, params):
-    st.header("\nDecision boundary")
+    st.header("\nEvaluation")
 
     # Get the data
     subset_X, subset_y = sizeAndDigitSubset(numbers, pointsPerDigit)
@@ -97,15 +98,17 @@ def plotBoundaries(numbers, model, params):
     models = {"KNN": cf.KNN, "SVM": cf.SVM, "NeuralNetwork": cf.NeuralNetwork}
 
     # Complete the plot
-    if st.button("Plot it"):
+    if st.button("Plot decision boundary"):
         with st.spinner("Constructing classifer"):
             clf = models[model](reduced, subset_y, params)
-            Ein = 1 - clf.score(reduced, subset_y)
+            accuracy = clf.score(reduced, subset_y) if model != "NeuralNetwork" else clf.test_on_batch(reduced, to_categorical(subset_y))[1]
+            Ein = 1 - accuracy
 
         with st.spinner("Drawing boundaries"):
             # m, c = getColorsAndMarkers(numbers)
-            img = cf.plotBoundaries(reduced, subset_y, clf)
-            st.write(img)
+            if model != "NeuralNetwork":
+                img = cf.plotBoundaries(reduced, subset_y, clf)
+                st.write(img)
 
         st.subheader("Classifcation error of {0:.3f}".format(Ein))
 
@@ -274,6 +277,9 @@ elif mode == "Model Preview":
             plotBoundaries(numbers, model, params)
 
         elif model == "NeuralNetwork":
+            st.header("Doesn't work now use with caution")
+            st.write("")
+            st.write("")
             if st.checkbox("Concealed technical details"):
                 st.write(
                     "Implemented with Keras using Tensorflow as backend\n\n"
@@ -285,20 +291,45 @@ elif mode == "Model Preview":
             numbers = pickNumbers(model)
 
             # Parameters
-            params = paramStart()
-            numLayers = st.number_input("Number of hidden layers", 1, 5)
-            params["numUnits"] = [0 for _ in range(numLayers + 1)]
-            params["activation"] = ["None" for _ in range(numLayers + 1)]
+            if numbers:
+                params = paramStart()
+                numLayers = st.number_input("Number of hidden layers", 1, 5)
+                params["numUnits"] = [0 for _ in range(numLayers + 1)]
+                params["activations"] = ["None" for _ in range(numLayers + 1)]
 
-            # Hidden Layers
-            st.subheader("Hidden Layer" if numLayers == 1 else "Hidden Layers")
-            for i in range(numLayers):
-                st.write("Layer " + str(i + 1))
-                params["numUnits"][i] = st.number_input(
-                    "Number of units (1-64)", 1, 64, 32 // 2 ** (i + 1), key=i
-                )
-                params["activation"][i] = st.selectbox(
-                    "Activation function",
+                # Hidden Layers
+                st.subheader("Hidden Layer" if numLayers == 1 else "Hidden Layers")
+                for i in range(numLayers):
+                    st.write("Layer " + str(i + 1))
+                    params["numUnits"][i] = st.number_input(
+                        "Number of units (1-64)", 1, 64, 32 // 2 ** (i + 1), key=i
+                    )
+                    params["activations"][i] = st.selectbox(
+                        "Activation function",
+                        [
+                            "elu",
+                            "softmax",
+                            "selu",
+                            "softplus",
+                            "softsign",
+                            "relu",
+                            "tanh",
+                            "sigmoid",
+                            "hard_sigmoid",
+                            "exponential",
+                            "linear",
+                        ],
+                        10,
+                        key=i,
+                    )
+                    if i < numLayers - 1:
+                        st.write("")
+
+                # Output Layer - 1 for binary or n for n class
+                st.subheader("Output layer")
+                params["numUnits"][-1] = max(numbers)+1
+                params["activations"][-1] = st.selectbox(
+                    "Output layer activation function",
                     [
                         "elu",
                         "softmax",
@@ -312,48 +343,29 @@ elif mode == "Model Preview":
                         "exponential",
                         "linear",
                     ],
-                    6 if i < numLayers - 1 else 10,
+                    6,
                     key=i,
                 )
-                if i < numLayers - 1:
-                    st.write("")
 
-            # Output Layer - 1 for binary or n for n class
-            st.subheader("Output layer")
-            params["numUnits"][-1] = 1 if len(numbers) == 2 else len(numbers)
-            params["activation"][-1] = st.selectbox(
-                "Output layer activation function",
-                [
-                    "elu",
-                    "softmax",
-                    "selu",
-                    "softplus",
-                    "softsign",
-                    "relu",
-                    "tanh",
-                    "sigmoid",
-                    "hard_sigmoid",
-                    "exponential",
-                    "linear",
-                ],
-                6 if i < numLayers - 1 else 10,
-                key=i,
-            )
+                filename, summary = cf.preview(cf.compile(params))
 
-            # Training details
-            st.header("Training details")
-            params["epochs"] = st.number_input(
-                "Number of training iterations", 1, 10000, 1000
-            )
-            maxBatch = max(1, len(sizeAndDigitSubset(numbers, pointsPerDigit)[0]))
-            params["BatchSize"] = st.number_input(
-                "Batch size 1 - %d" % maxBatch, 1, maxBatch, maxBatch
-            )
+                # Use the Keras plot_model util
+                st.write("")
+                if st.checkbox("Visualize Model?"):
+                    st.image(filename)
 
-            # st.write(params)
+                # Training details
+                st.header("Training details")
+                params["epochs"] = st.number_input(
+                    "Number of training iterations", 1, 10000, 1000
+                )
+                #maxBatch = max(1, len(numbers)*pointsPerDigit)
+                #params["BatchSize"] = st.number_input(
+                #    "Batch size 1 - %d" % maxBatch, 1, maxBatch, maxBatch
+                #)
 
-            # Plot
-            # plotBoundaries(numbers, model, params)
+                # Plot
+                plotBoundaries(numbers, model, params)
 
         else:
             st.title("I don't know how " + model + " works")
